@@ -462,38 +462,94 @@ def simple_search(query: str, data: Dict[str, Any], top_n: int = 3) -> List[str]
     if not data:
         return []
     
-    # Prepare search prompt
-    prompt = f"""
-    Using the provided JSON dictionary of addresses below and the query below, return only the top {top_n} matching addresses
-    (keys only) in JSON format without any additional code.
+    # Debug - show number of properties in database
+    st.info(f"Searching through {len(data)} properties")
     
-    JSON dictionary of addresses: {json.dumps(data)}.
+    # Extract location elements from query
+    query_lower = query.lower()
     
-    query: "{query}"
-    """
+    # Keywords that might be in the query - especially looking for location matches
+    location_keywords = ["manivali", "khalapur", "raigad", "chowk"]
     
-    try:
-        # Call Gemini for semantic search
-        response = st.session_state.client.models.generate_content(
-            model=st.session_state.model_id, 
-            contents=[prompt]
-        )
+    # Manual scoring of properties based on match quality
+    matching_scores = {}
+    
+    for key, prop_data in data.items():
+        score = 0
         
-        # Extract the keys from the response
-        response_text = response.text
-        # This part needs to be improved with proper JSON parsing
-        # For now, we'll extract filenames that appear in the response
-        matching_keys = []
-        for key in data.keys():
-            if key in response_text:
-                matching_keys.append(key)
+        # Check if this is the new format or old format
+        if "property_details" in prop_data and "address" in prop_data["property_details"]:
+            address = prop_data["property_details"]["address"]
+        elif "address" in prop_data:
+            address = prop_data["address"]
+        else:
+            continue
+        
+        # Check for village, taluka, district matches
+        village = str(address.get("village", "")).lower()
+        taluka = str(address.get("taluka", "")).lower()
+        district = str(address.get("district_and_or_sub_district", "")).lower()
+        
+        # If district is an object with a value property, extract the value
+        if isinstance(district, dict) and "value" in district:
+            district = str(district["value"]).lower()
+        
+        # Check for location keywords in these fields
+        for keyword in location_keywords:
+            if keyword in query_lower:
+                # Check if the keyword is in any of the location fields
+                if keyword in village or keyword in taluka or keyword in district:
+                    score += 30  # High score for direct location matches
                 
-        # Limit to top_n results
-        return matching_keys[:top_n]
-    except Exception as e:
-        st.error(f"Error performing search: {e}")
-        return []
-
+        # Add general matching score for any field
+        address_str = str(address).lower()
+        if any(word in address_str for word in query_lower.split()):
+            score += 10
+            
+        # If we have a match, record the score
+        if score > 0:
+            matching_scores[key] = score
+    
+    # If we have manual matches, use them
+    if matching_scores:
+        # Sort by score (highest first) and get top matches
+        sorted_matches = sorted(matching_scores.items(), key=lambda x: x[1], reverse=True)
+        top_matches = [k for k, v in sorted_matches[:top_n]]
+        return top_matches
+    
+    # If no manual matches found, fall back to the Gemini API
+    if setup_client():
+        prompt = f"""
+        Using the provided JSON dictionary of addresses below and the query below, return only the top {top_n} matching addresses
+        (keys only) in JSON format without any additional code.
+        
+        JSON dictionary of addresses: {json.dumps(data)}.
+        
+        query: "{query}"
+        
+        
+        try:
+            # Call Gemini for semantic search
+            response = st.session_state.client.models.generate_content(
+                model=st.session_state.model_id, 
+                contents=[prompt]
+            )
+            
+            # Extract the keys from the response
+            response_text = response.text
+            matching_keys = []
+            for key in data.keys():
+                if key in response_text:
+                    matching_keys.append(key)
+                    
+            # Limit to top_n results
+            return matching_keys[:top_n]
+        except Exception as e:
+            st.error(f"Error performing search: {e}")
+            return []
+            
+    return []
+    
 # Advanced search function
 def advanced_search(criteria: Dict[str, str], data: Dict[str, Any], top_n: int = 3) -> List[str]:
     if not data:
