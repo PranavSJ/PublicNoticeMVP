@@ -540,12 +540,20 @@ def advanced_search(criteria: Dict[str, str], data: Dict[str, Any], top_n: int =
         return []
 
 # Function to create a formatted display of property details
+# Function to create a formatted display of property details
 def display_property_details(property_data, file_name=None):
     if not property_data:
         return
     
-    property_details = property_data.get("property_details", {})
+    # Check if property_data has property_details or if it's directly the property details
+    if "property_details" in property_data:
+        property_details = property_data.get("property_details", {})
+    else:
+        # Assume this is already the property details
+        property_details = property_data
+    
     if not property_details:
+        st.error("No property details found")
         return
     
     address = property_details.get("address", {})
@@ -577,10 +585,14 @@ def display_property_details(property_data, file_name=None):
         district_value = "N/A"
         if isinstance(address.get("district_and_or_sub_district"), dict):
             district_value = address.get("district_and_or_sub_district", {}).get("value", "N/A")
+        elif isinstance(address.get("district_and_or_sub_district"), str):
+            district_value = address.get("district_and_or_sub_district", "N/A")
         
         city_value = "N/A"
         if isinstance(address.get("city"), dict):
             city_value = address.get("city", {}).get("value", "N/A")
+        elif isinstance(address.get("city"), str):
+            city_value = address.get("city", "N/A")
         
         # Format address components
         address_components = []
