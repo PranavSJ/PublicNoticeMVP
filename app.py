@@ -248,8 +248,15 @@ def load_sample_database():
 
 # Function to initialize session state variables
 def init_session_state():
+    # Modify the init_session_state function to check for a secret API key
+def init_session_state():
     if 'api_key' not in st.session_state:
-        st.session_state.api_key = ""
+        # Try to get API key from secrets
+        try:
+            st.session_state.api_key = st.secrets["API_KEY"]
+        except:
+            # If not found in secrets, default to empty string
+            st.session_state.api_key = ""    
     if 'client' not in st.session_state:
         st.session_state.client = None
     if 'model_id' not in st.session_state:
