@@ -1031,10 +1031,17 @@ def main():
             st.markdown("---")
             st.subheader("Search Results")
             
+            # Debug information to see what results we have
+            st.write(f"Debug - Results keys: {st.session_state.search_results}")
+            
             for idx, result_key in enumerate(st.session_state.search_results):
                 with st.expander(f"Result {idx+1}: {result_key}"):
-                    display_property_details(st.session_state.processed_data[result_key], result_key)
-    
+                    # Check if the key exists in the processed_data
+                    if result_key in st.session_state.processed_data:
+                        display_property_details(st.session_state.processed_data[result_key], result_key)
+                    else:
+                        st.error(f"Property data not found for key: {result_key}")
+            
     elif st.session_state.current_tab == "Database":
         st.title("Property Database Management")
         
