@@ -523,17 +523,17 @@ def simple_search(query: str, data: Dict[str, Any], top_n: int = 3) -> List[str]
         sorted_matches = sorted(matching_scores.items(), key=lambda x: x[1], reverse=True)
         top_matches = [k for k, v in sorted_matches[:top_n]]
         return top_matches
-    
-    # If no manual matches found, fall back to the Gemini API
+        
     if setup_client():
+        # Format prompt with cleaner syntax
         prompt = f"""
         Using the provided JSON dictionary of addresses below and the query below, return only the top {top_n} matching addresses
         (keys only) in JSON format without any additional code.
-        
+    
         JSON dictionary of addresses: {json.dumps(data)}.
-        
+    
         query: "{query}"
-        
+        """
         
         try:
             # Call Gemini for semantic search
